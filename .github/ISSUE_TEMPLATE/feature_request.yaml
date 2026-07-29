@@ -21,6 +21,33 @@ body:
     validations:
       required: true
 
+  - type: dropdown
+    id: scope
+    attributes:
+      label: What does it touch?
+      multiple: true
+      options:
+        - Frontend
+        - Backend
+    validations:
+      required: true
+
+  - type: textarea
+    id: spec
+    attributes:
+      label: Spec
+      description: |
+        Frontend — the screens, states, and behaviour you have in mind.
+        Backend — link the ADR or design doc. If there is none yet, say so: a backend change needs one written before it is picked up.
+      placeholder: |
+        UI:
+          ...
+
+        Backend:
+          ADR / doc: https://...
+    validations:
+      required: false
+
   - type: textarea
     id: anything-else
     attributes:
