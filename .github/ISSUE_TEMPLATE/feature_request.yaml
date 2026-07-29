@@ -1,0 +1,30 @@
+name: ✨ Request Feature
+description: Something that does not exist yet
+title: "[Feature] "
+type: "Feature"
+labels: ["feat"]
+
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What do you want to be able to do?
+      description: The capability that is missing today.
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Why do you need it?
+      description: The situation that calls for it, and what you do instead today.
+    validations:
+      required: true
+
+  - type: textarea
+    id: anything-else
+    attributes:
+      label: Anything else?
+      description: Sketches, links, prior art, or alternatives you considered.
+    validations:
+      required: false

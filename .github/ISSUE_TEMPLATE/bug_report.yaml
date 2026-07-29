@@ -1,0 +1,55 @@
+name: 🐞 Report Bug
+description: Something is broken or behaving unexpectedly
+title: "[Bug] "
+type: "Bug"
+labels: ["bug"]
+
+body:
+  - type: textarea
+    id: what-you-did
+    attributes:
+      label: What did you do?
+      description: The steps that led to the bug.
+      placeholder: |
+        1. Go to ...
+        2. Tap ...
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened?
+      description: Include the error message verbatim if there is one.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+    validations:
+      required: true
+
+  - type: dropdown
+    id: reproducible
+    attributes:
+      label: Can you reproduce it?
+      options:
+        - Every time
+        - Sometimes
+        - Only saw it once
+        - Haven't tried
+    validations:
+      required: true
+
+  - type: textarea
+    id: anything-else
+    attributes:
+      label: Anything else?
+      description: |
+        Version, OS, device, browser — plus screenshots, logs, or links.
+        Tip: you can attach images or log files by dragging them into this box.
+    validations:
+      required: false

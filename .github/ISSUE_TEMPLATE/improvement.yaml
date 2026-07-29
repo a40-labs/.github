@@ -1,0 +1,30 @@
+name: 🧹 Suggest Improvement
+description: Something works, but could work better
+title: "[Improvement] "
+type: "Improvement"
+labels: ["improvement"]
+
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What's the problem?
+      description: What is annoying, slow, confusing, or missing today?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would better look like?
+      description: How you imagine it working instead. A rough sketch is fine.
+    validations:
+      required: true
+
+  - type: textarea
+    id: anything-else
+    attributes:
+      label: Anything else?
+      description: Screenshots, links, prior art, or alternatives you considered.
+    validations:
+      required: false
