@@ -1,0 +1,18 @@
+🚀  Pingbo pingbo-v1.1.0 is live in production
+pingbo@6a6af3fa0 · after pingbo-v1.0.0 · 5 changes · no migrations · needs A40 a40-v1.1.0 ✓
+
+✨ Features (4)
+• The look asks look-signature-v2 on the pin; look-sent-v5 is measured and held back
+    onboarding · PR #4269 · issue #4254 A candidate who applied to the owner's role is named "Recruiters" on the read… (open)
+• Server releases, named by the production roll and tagged when it lands
+    release · PR #4268
+• Onboarding lab step 9: each Matter's status from the production Matter judge
+    onboarding-lab · PR #4266
+• An a40-prod that runs commit tags refuses the production roll
+    roll · PR #4265
+
+📝 Docs (1)
+• The §5 readings on gpt-6-luna-decisions
+    decision · PR #4267 · issue #4257 The decision lane moves from TypeSafe jev-1.13.0 to gpt-6-luna-decisions (closed)
+
+[ Release notes ]  [ Compare v1.0.0…v1.1.0 ]
