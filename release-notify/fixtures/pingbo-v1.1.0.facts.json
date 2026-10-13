@@ -1,0 +1,49 @@
+{
+  "product": "pingbo",
+  "repo": "a40-labs/pingbo",
+  "tag": "pingbo-v1.1.0",
+  "commit": "6a6af3fa0abf606021f32461856abe2d35cc54b2",
+  "previous": { "tag": "pingbo-v1.0.0", "commit": "fc270ad38a8b07c11b482922a913d44fcdb811c4" },
+  "releaseUrl": "https://github.com/a40-labs/pingbo/releases/tag/pingbo-v1.1.0",
+  "paths": ["server", ".github/workflows/server-image.yml", "scripts/ci-pull-image.sh"],
+  "changes": [
+    {
+      "sha": "6a6af3fa0abf606021f32461856abe2d35cc54b2",
+      "subject": "feat(release): server releases, named by the production roll and tagged when it lands (#4268)",
+      "pr": { "number": 4268, "title": "feat(release): server releases, named by the production roll and tagged when it lands", "url": "https://github.com/a40-labs/pingbo/pull/4268" },
+      "issues": []
+    },
+    {
+      "sha": "bb0abd5be0000000000000000000000000000000",
+      "subject": "feat(onboarding): the look asks look-signature-v2 on the pin; look-sent-v5 is measured and held back (#4269)",
+      "pr": { "number": 4269, "title": "feat(onboarding): the look asks look-signature-v2 on the pin; look-sent-v5 is measured and held back", "url": "https://github.com/a40-labs/pingbo/pull/4269" },
+      "issues": [
+        { "repo": "a40-labs/pingbo", "number": 4254, "url": "https://github.com/a40-labs/pingbo/issues/4254", "readable": true, "title": "A candidate who applied to the owner's role is named \"Recruiters\" on the read card", "state": "OPEN" }
+      ]
+    },
+    {
+      "sha": "9c1f91cc10000000000000000000000000000000",
+      "subject": "docs(decision): the §5 readings on gpt-6-luna-decisions (#4267)",
+      "pr": { "number": 4267, "title": "docs(decision): the §5 readings on gpt-6-luna-decisions", "url": "https://github.com/a40-labs/pingbo/pull/4267" },
+      "issues": [
+        { "repo": "a40-labs/pingbo", "number": 4257, "url": "https://github.com/a40-labs/pingbo/issues/4257", "readable": true, "title": "[Feature] The decision lane moves from TypeSafe jev-1.13.0 to gpt-6-luna-decisions", "state": "CLOSED" }
+      ]
+    },
+    {
+      "sha": "e75dc5c500000000000000000000000000000000",
+      "subject": "feat(onboarding-lab): onboarding lab step 9: each Matter's status from the production Matter judge (#4266)",
+      "pr": { "number": 4266, "title": "feat(onboarding-lab): onboarding lab step 9: each Matter's status from the production Matter judge", "url": "https://github.com/a40-labs/pingbo/pull/4266" },
+      "issues": []
+    },
+    {
+      "sha": "6fff2cf720000000000000000000000000000000",
+      "subject": "feat(roll): an a40-prod that runs commit tags refuses the production roll (#4265)",
+      "pr": { "number": 4265, "title": "feat(roll): an a40-prod that runs commit tags refuses the production roll", "url": "https://github.com/a40-labs/pingbo/pull/4265" },
+      "issues": []
+    }
+  ],
+  "migrations": 0,
+  "protos": null,
+  "requires": "a40-v1.1.0",
+  "production": { "known": true, "pin": "c987cf02029efa9479029ef07c88352255cbb28c", "kind": "release", "release": "a40-v1.1.0" }
+}

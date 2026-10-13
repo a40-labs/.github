@@ -1,0 +1,133 @@
+# The release notification (release-notify/notify.mjs): one Slack message, posted as the A40
+# app's bot, when an A40 foundation release (a40-v*, a40-labs/backend) or a Pingbo release
+# (pingbo-v*, a40-labs/pingbo) is published. The layout is the one the owner approved on
+# 2026-10-13: header, summary line, the changes grouped by conventional-commit type with each
+# PR's issues, and buttons to the release notes and the compare view.
+#
+# Called by the job that created the GitHub release, only when it created it (backend
+# release.yml's `release` job, pingbo cloud-roll-pr.yml's `release` job), and by each of those
+# repositories' own release-notify.yml dispatch, which re-posts a release on demand:
+#
+#   notify:
+#     needs: release
+#     if: needs.release.outputs.created == 'true'
+#     permissions:
+#       contents: read
+#       pull-requests: read
+#       issues: read
+#     uses: a40-labs/.github/.github/workflows/release-notify.yml@main
+#     with:
+#       product: pingbo
+#       tag: <the release tag>
+#     secrets:
+#       slack_bot_token: <secrets.A40_SLACK_BOT_TOKEN>
+#       cross_repo_token: <secrets.BOTGITHUBTOKEN>
+#
+# Callers use @main: this repository's main is protected and takes only signed commits.
+#
+# What is not the obvious default, and why:
+#  1. runs-on a40-runner. A called workflow runs on the CALLER's runners (backend and pingbo
+#     are private, and the org's runner groups admit no public repository), and a40-runner is
+#     the runner proven to reach Slack (a40-labs/deploy agent-ops-slack-notify.yml).
+#  2. The script is checked out from this repository beside the caller's checkout: at this
+#     run's own commit when this workflow runs from here, else main. In a called workflow
+#     github.workflow_ref and github.workflow_sha are the CALLER's, so they cannot name this
+#     repository's commit; main is what callers reference anyway.
+#  3. The caller's token reads the caller's pull requests, issues and release; the optional
+#     cross_repo_token reads issues in other a40-labs repositories and what a40-prod runs
+#     (a40-labs/deploy). Without it those issues show as plain links, the Pingbo line drops
+#     its ✓, and the A40 line leaves out its production clause.
+#  4. No bot token, no post: the message and its chat.postMessage payload go to the job
+#     summary, with the notice "A40_SLACK_BOT_TOKEN not set: not posted", and the job passes.
+#     A refusal from Slack (`ok` other than true) fails it.
+name: release-notify
+
+on:
+  workflow_call:
+    inputs:
+      product:
+        description: "a40 (a40-labs/backend) or pingbo (a40-labs/pingbo)"
+        required: true
+        type: string
+      tag:
+        description: "The release: a40-vX.Y.Z or pingbo-vX.Y.Z, whose GitHub release is published"
+        required: true
+        type: string
+      paths:
+        description: "Pathspecs the change count is limited to, one per line (default: every commit since the previous release)"
+        required: false
+        type: string
+        default: ""
+      dry_run:
+        description: "Write the message to the job summary and post nothing"
+        required: false
+        type: boolean
+        default: false
+      channel:
+        description: "The Slack channel id (default: #dev-product)"
+        required: false
+        type: string
+        default: C02DEV2BWRZ
+    secrets:
+      slack_bot_token:
+        description: "The A40 app's bot token (xoxb-). Without it nothing is posted."
+        required: false
+      cross_repo_token:
+        description: "A token that reads the other a40-labs repositories (issues) and a40-labs/deploy (what a40-prod runs)."
+        required: false
+    outputs:
+      slack_ts:
+        description: "The posted message's ts, for a follow-up to thread under or update; empty when nothing was posted"
+        value: ${{ jobs.notify.outputs.slack_ts }}
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    runs-on: a40-runner
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+    outputs:
+      slack_ts: ${{ steps.notify.outputs.slack_ts }}
+    steps:
+      # The caller's repository: every commit and tag, since the previous release is found and
+      # the changes counted from history.
+      - uses: actions/checkout@v4
+        with:
+          path: caller
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/checkout@v4
+        with:
+          repository: a40-labs/.github
+          ref: ${{ startsWith(github.workflow_ref, 'a40-labs/.github/') && github.workflow_sha || 'main' }}
+          path: notifier
+          sparse-checkout: release-notify
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Post the release to Slack
+        id: notify
+        working-directory: caller
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          CROSS_REPO_TOKEN: ${{ secrets.cross_repo_token }}
+          SLACK_BOT_TOKEN: ${{ secrets.slack_bot_token }}
+          PRODUCT: ${{ inputs.product }}
+          TAG: ${{ inputs.tag }}
+          PATHS: ${{ inputs.paths }}
+          CHANNEL: ${{ inputs.channel }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          args=(--product "$PRODUCT" --tag "$TAG" --paths "$PATHS" --channel "$CHANNEL")
+          if [ "$DRY_RUN" = "true" ]; then args+=(--dry-run); fi
+          node "$GITHUB_WORKSPACE/notifier/release-notify/notify.mjs" "${args[@]}"

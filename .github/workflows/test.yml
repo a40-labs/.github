@@ -1,0 +1,27 @@
+# The release notifier's tests (node --test release-notify/), on every pull request and on main.
+#
+# GitHub-hosted, unlike the org's other workflows: this repository is public, the org's
+# self-hosted runner groups admit no public repository, and they should not (a fork's pull
+# request would run on them). Public repositories' hosted minutes are free.
+name: test
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  release-notify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: node --test release-notify/
