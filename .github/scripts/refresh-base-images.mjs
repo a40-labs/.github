@@ -273,13 +273,14 @@ export function renderPrBody({ group, report, runUrl = '' }) {
   const images = Array.isArray(group.images) ? group.images : [];
   const n = (group.advisories || []).length;
   const because = [
-    `- The production images below carry ${plural(group.fixableCount || 0, 'CRITICAL or HIGH finding', 'CRITICAL or HIGH findings')} with a fixed version (worst: ${severity}; ${plural(n, 'advisory', 'advisories')}, none in the exceptions ledger${group.firstSeen ? `; first seen ${group.firstSeen}` : ''}), read by GCP Container Scanning in the patrol's \`container_scanning.pinned\`. OS packages come from the base images, which no lockfile here names.`,
+    `- The production images below carry ${plural(group.fixableCount || 0, 'CRITICAL or HIGH finding', 'CRITICAL or HIGH findings')} in OS packages with a fixed version (worst: ${severity}; ${plural(n, 'advisory', 'advisories')}, none in the exceptions ledger${group.firstSeen ? `; first seen ${group.firstSeen}` : ''}), read by GCP Container Scanning in the patrol's \`container_scanning.pinned\`. OS packages come from the base images, which no lockfile here names; the images' other findings are the lockfile groups' and are not listed.`,
   ];
   for (const im of images) {
     const pd = im.platform_digests || {};
     const plats = Object.entries(pd).map(([p, d]) => `${p} \`${d}\``).join(', ');
-    const counts = im.fixable && typeof im.fixable === 'object'
-      ? ` Fixable: ${['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].filter((s) => im.fixable[s] != null).map((s) => `${s} ${im.fixable[s]}`).join(' · ')}.`
+    // OS packages only (the patrol's fixable_os); the image's other fixable findings are not a base-image refresh's.
+    const counts = im.fixable_os && typeof im.fixable_os === 'object'
+      ? ` Fixable in OS packages: ${['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].filter((s) => im.fixable_os[s] != null).map((s) => `${s} ${im.fixable_os[s]}`).join(' · ')}.`
       : '';
     because.push(`- \`${im.key}\` (${(im.dockerfiles || []).map((d) => `\`${d}\``).join(', ')}): ${im.reference ? `\`${im.reference}\`, ` : ''}index \`${im.index_digest || 'unknown'}\`${plats ? ` (${plats})` : ''}${im.scanned ? `, scanned ${im.scanned}` : ''}${im.complete ? '' : ', read incompletely'}.${counts}`);
     for (const f of im.findings || []) because.push(`  - ${f.id || '(no id)'} \`${f.pkg}\` ${f.installed || '?'} → ${f.fixed} (${f.severity})`);
@@ -292,7 +293,7 @@ export function renderPrBody({ group, report, runUrl = '' }) {
   for (const s of report.skipped) thisCommit.push(`- Skipped: \`${s.file}\`${s.line ? `:${s.line}` : ''}${s.raw ? ` \`${s.raw}\`` : ''} — ${s.reason}.`);
   thisCommit.push(
     "- The caller's `fast_checks` were not run: they prove lockfile bumps, and this change moves only `FROM`/`ARG` digests. The proof is the repository's image workflow, which builds both platforms (linux/amd64 and linux/arm64) on a Dockerfile PR; the findings are re-read by the patrol after the next publish.",
-    "- A refresh moves only to what upstream has published under the same tag: a finding whose fix upstream has not shipped yet, or one in the application's own dependencies (the lockfile groups patch those), stays after this merges.",
+    "- A refresh moves only to what upstream has published under the same tag: an OS-package finding whose fix upstream has not shipped yet stays after this merges.",
   );
   const refs = report.bumps.length;
   return [

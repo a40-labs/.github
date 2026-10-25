@@ -323,7 +323,7 @@ test('a refresh: moved=true, the report lists ref/tag/old/new, and the PR body c
   const group = {
     ecosystem: 'base-image', tier: 't1', severity: 'high', paths: ['apps/console/Dockerfile.monorepo'], fixableCount: 1, advisories: ['CVE-2026-0001'], firstSeen: '2026-10-20T06:00:00+00:00',
     images: [{ key: 'a40-prod/console-shubo', dockerfiles: ['apps/console/Dockerfile.monorepo'], reference: 'europe-west2-docker.pkg.dev/a40-prod/a40/console-shubo:v1', index_digest: NEW('d'),
-      platform_digests: { 'linux/amd64': NEW('e'), 'linux/arm64': NEW('f') }, scanned: '2026-10-25T02:00:00Z', complete: true, fixable: { CRITICAL: 0, HIGH: 1, MEDIUM: 0, LOW: 0 },
+      platform_digests: { 'linux/amd64': NEW('e'), 'linux/arm64': NEW('f') }, scanned: '2026-10-25T02:00:00Z', complete: true, fixable: { CRITICAL: 3, HIGH: 9, MEDIUM: 0, LOW: 0 }, fixable_os: { CRITICAL: 0, HIGH: 1, MEDIUM: 0, LOW: 0 },
       findings: [{ id: 'CVE-2026-0001', pkg: 'musl', installed: '1.2.5-r0', fixed: '1.2.5-r1', severity: 'high' }], more: 0 }],
   };
   writeFileSync(join(dir, 'group.json'), JSON.stringify(group));
@@ -341,6 +341,9 @@ test('a refresh: moved=true, the report lists ref/tag/old/new, and the PR body c
   assert.match(body, /\n\*\*This commit\*\*\n\n- /);
   assert.ok(body.includes(`- \`a40-prod/console-shubo\` (\`apps/console/Dockerfile.monorepo\`): \`europe-west2-docker.pkg.dev/a40-prod/a40/console-shubo:v1\`, index \`${NEW('d')}\` (linux/amd64 \`${NEW('e')}\`, linux/arm64 \`${NEW('f')}\`)`));
   assert.ok(body.includes('  - CVE-2026-0001 `musl` 1.2.5-r0 → 1.2.5-r1 (high)'));
+  assert.ok(body.includes(' Fixable in OS packages: CRITICAL 0 · HIGH 1 · MEDIUM 0 · LOW 0.'), 'OS counts, not the whole image\'s');
+  assert.ok(!body.includes('CRITICAL 3'), 'the non-OS fixable counts are not the motivation');
+  assert.ok(body.includes('1 CRITICAL or HIGH finding in OS packages with a fixed version'));
   assert.ok(body.includes(`- Refresh \`node:24-alpine\` \`${OLD.node24}\` → \`${NEW('1')}\` in \`apps/console/Dockerfile.monorepo\` (lines 4, 6, 7, 8, 9), within its tag.`));
   assert.ok(body.includes("The caller's `fast_checks` were not run"));
   assert.ok(body.includes("the repository's image workflow, which builds both platforms (linux/amd64 and linux/arm64) on a Dockerfile PR; the findings are re-read by the patrol after the next publish."));
