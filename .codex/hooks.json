@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": ".*spawn_agent$|^Agent$",
+        "hooks": [
+          {
+            "type": "command",
+            "timeout": 20,
+            "command": "bash \"$(git rev-parse --show-toplevel)/../buckle/scripts/agents/route-delegation.sh\" hook"
+          }
+        ]
+      }
+    ]
+  }
+}
