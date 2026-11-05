@@ -63,6 +63,18 @@ body:
       required: true
 
   - type: textarea
+    id: documents
+    attributes:
+      label: Documents
+      description: |
+        The roadmap pages and design records this touches — the architecture page on roadmap.a40.ai (/pingbo/architecture/…, /a40/…), the ADR or FEAT — and what in them changes when this ships. Closing includes those pages updated to the shipped reality; a page that still describes the old behaviour keeps the issue open. Write "None: <why>" when no page describes this area.
+      placeholder: |
+        roadmap.a40.ai/pingbo/architecture/usage/ — the Features view gains the new row
+        pingbo docs/adr/usage-measurement/plan.md §3 — the event is added to the tracking plan
+    validations:
+      required: true
+
+  - type: textarea
     id: anything-else
     attributes:
       label: Anything else?
