@@ -1,0 +1,59 @@
+name: 📈 Measuring
+description: A shipped change's production reading, owed until it is posted
+title: "[Measure] "
+labels: ["measuring"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Opened at release, by whoever closes the bug, feature or improvement it measures — never as the first issue about a change. It closes when the first production reading from admin.a40.ai/usage is posted here. A dev or staging reading is the pre-ship check and closes nothing.
+
+  - type: textarea
+    id: measures
+    attributes:
+      label: Measures
+      description: The issue and PR this reading is for, the build or revision that shipped it, and the day it reached production.
+      placeholder: |
+        a40-labs/pingbo#4565, shipped in #5553 (TestFlight build 42, on the phones 2026-11-12)
+    validations:
+      required: true
+
+  - type: textarea
+    id: measured-by
+    attributes:
+      label: Measured by
+      description: Copied from the original issue's Measured by — the usage events that record the change, the number it is meant to move, and the number before.
+      placeholder: |
+        Events: matter_opened, draft_sent
+        Moves: draft_sent adoption (12 of 23 before), composing p50 (4 m 05 s before)
+    validations:
+      required: true
+
+  - type: textarea
+    id: reading
+    attributes:
+      label: Reading
+      description: The window counted from the ship day, the cohort (every account, or the TestFlight cohort while that is all there is), and the console view the number is read on.
+      placeholder: |
+        14 days from 2026-11-12, every account, admin.a40.ai/usage → Pingbo → Features → draft_sent
+    validations:
+      required: true
+
+  - type: textarea
+    id: done-when
+    attributes:
+      label: Done when
+      description: One box, ticked by the comment that carries the number, its window, its cohort and the number before.
+      value: |
+        - [ ] Reading: <metric> over <window> posted here
+    validations:
+      required: true
+
+  - type: textarea
+    id: anything-else
+    attributes:
+      label: Anything else?
+      description: What could make the reading hard to take, or what it should be compared with.
+    validations:
+      required: false
