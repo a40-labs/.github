@@ -49,12 +49,12 @@ body:
     attributes:
       label: Measured by
       description: |
-        The loop this issue closes: the usage events that record it, and the number it is meant to move — adoption, a lapse (p50/p95), retention, cost per event, margin, CAC, LTV — read on admin.a40.ai/usage.
-        Name the events from the usage vocabulary (pingbo docs/adr/usage-measurement/inventory.json), or the row the shipping PR will add; then the reading that closes the issue: the number, its window and its cohort. Write "None: <why>" only for work no person uses.
+        The brief for this change's measuring issue: the usage events that record it, and the number it is meant to move — adoption, a lapse (p50/p95), retention, cost per event, margin, CAC, LTV — read on admin.a40.ai/usage.
+        Name the events from the usage vocabulary (pingbo docs/adr/usage-measurement/inventory.json), or the row the shipping PR will add; the number today; and the window and cohort to read it over. This issue closes on its own boxes; at release a 📈 Measuring issue is opened with this field copied in, and the production reading closes that one. Write "None: <why>" only for work no person uses, and then no measuring issue is opened.
       placeholder: |
         Events: matter_opened, draft_sent
         Moves: draft_sent adoption (12 of 23 → …), composing p50 (4 m 05 s → …)
-        Closes on: the first 14-day reading after the build ships, posted here
+        Read over: the first 14 days after the build ships, every account
     validations:
       required: true
 
