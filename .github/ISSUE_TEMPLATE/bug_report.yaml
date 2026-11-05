@@ -45,6 +45,32 @@ body:
       required: true
 
   - type: textarea
+    id: measured-by
+    attributes:
+      label: Measured by
+      description: |
+        The loop this issue closes: the usage events that record it, and the number it is meant to move — adoption, a lapse (p50/p95), retention, cost per event, margin, CAC, LTV — read on admin.a40.ai/usage.
+        Name the events from the usage vocabulary (pingbo docs/adr/usage-measurement/inventory.json), or the row the shipping PR will add; then the reading that closes the issue: the number, its window and its cohort. Write "None: <why>" only for work no person uses.
+      placeholder: |
+        Events: matter_opened, draft_sent
+        Moves: draft_sent adoption (12 of 23 → …), composing p50 (4 m 05 s → …)
+        Closes on: the first 14-day reading after the build ships, posted here
+    validations:
+      required: true
+
+  - type: textarea
+    id: documents
+    attributes:
+      label: Documents
+      description: |
+        The roadmap pages and design records this touches — the architecture page on roadmap.a40.ai (/pingbo/architecture/…, /a40/…), the ADR or FEAT — and what in them changes when this ships. Closing includes those pages updated to the shipped reality; a page that still describes the old behaviour keeps the issue open. Write "None: <why>" when no page describes this area.
+      placeholder: |
+        roadmap.a40.ai/pingbo/architecture/usage/ — the Features view gains the new row
+        pingbo docs/adr/usage-measurement/plan.md §3 — the event is added to the tracking plan
+    validations:
+      required: true
+
+  - type: textarea
     id: anything-else
     attributes:
       label: Anything else?
