@@ -48,18 +48,20 @@ test('release-notify.yml runs on a40-runner over the caller\'s full history, wit
   assert.match(job, /if \[ "\$DRY_RUN" = "true" \]; then args\+=\(--dry-run\); fi/);
 });
 
-test('slack-post.yml takes a channel, payload and optional images artifact and posts with the bot token', () => {
+test('slack-post.yml takes a channel, payload and optional images cache key and posts with the bot token', () => {
   const wf = workflow('slack-post.yml');
   assert.match(wf, /^on:\n {2}workflow_call:\n/m);
   const inputs = block(wf, 'inputs', 4);
   for (const name of ['channel', 'payload_json']) assert.match(block(inputs, name, 6), /required: true\n {8}type: string\n/, name);
-  assert.match(block(inputs, 'images_artifact', 6), /required: false\n {8}type: string\n {8}default: ""\n/);
+  assert.match(block(inputs, 'images_cache_key', 6), /required: false\n {8}type: string\n {8}default: ""\n/);
+  // Artifacts count against the org's shared storage (filled 2026-11-21); the cache is the caller repo's own.
+  assert.doesNotMatch(wf, /download-artifact|images_artifact/);
   assert.match(block(block(wf, 'secrets', 4), 'slack_bot_token', 6), /required: false\n/);
   const job = block(wf, 'post', 2);
   assert.match(job, /\n {4}runs-on: a40-runner\n/);
   assert.match(job, /SLACK_PAYLOAD_JSON: \$\{\{ inputs\.payload_json \}\}/);
-  assert.match(job, /- name: Download Slack images\n {8}if: \$\{\{ inputs\.images_artifact != '' \}\}\n {8}uses: actions\/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4\.3\.0\n {8}continue-on-error: true\n {8}with:\n {10}name: \$\{\{ inputs\.images_artifact \}\}\n {10}path: \$\{\{ runner\.temp \}\}\/slack-images\n/);
-  assert.ok(job.indexOf('- name: Download Slack images') < job.indexOf('- name: Post to Slack'));
+  assert.match(job, /- name: Restore Slack images\n {8}if: \$\{\{ inputs\.images_cache_key != '' \}\}\n {8}uses: actions\/cache\/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4\n {8}continue-on-error: true\n {8}with:\n {10}key: \$\{\{ inputs\.images_cache_key \}\}\n {10}path: \$\{\{ runner\.temp \}\}\/slack-images\n/);
+  assert.ok(job.indexOf('- name: Restore Slack images') < job.indexOf('- name: Post to Slack'));
   assert.match(job, /args=\(--channel "\$CHANNEL"\)/);
   assert.match(job, /if \[ -d "\$RUNNER_TEMP\/slack-images" \]; then args\+=\(--images-dir "\$RUNNER_TEMP\/slack-images"\); fi/);
   assert.match(job, /node "\$GITHUB_WORKSPACE\/notifier\/release-notify\/slack\.mjs" "\$\{args\[@\]\}"/);
