@@ -7,17 +7,25 @@
 #     with:
 #       channel: C0123456789
 #       payload_json: <a JSON object: "text" (the notification fallback), optional "blocks">
-#       images_artifact: <optional artifact from the calling run containing PNG files>
+#       images_cache_key: <optional: the actions/cache key a job of the calling run saved its PNGs under>
 #     secrets:
 #       slack_bot_token: <secrets.A40_SLACK_BOT_TOKEN>
 #
 # Slack answers HTTP 200 for most refusals, so the job fails unless the answer says ok: true,
 # and prints Slack's `error` and `warning`, never the token. Without a token it posts nothing,
 # writes the payload to the job summary ("A40_SLACK_BOT_TOKEN not set: not posted") and passes.
-# Image blocks may use `"local_file": "costs.png"` to upload a PNG from images_artifact and
-# display it in place. Uploads need the A40 bot's files:write scope, with the same token used
-# to post. Missing files and failed uploads drop those images; images still processing after
-# retries fall back to the text sections. The payload's text remains the notification fallback.
+# Image blocks may use `"local_file": "costs.png"` to upload a PNG and display it in place.
+# Uploads need the A40 bot's files:write scope, with the same token used to post. Missing files
+# and failed uploads drop those images; images still processing after retries fall back to the
+# text sections. The payload's text remains the notification fallback.
+#
+# THE PNGS COME THROUGH THE CALLER'S ACTIONS CACHE, NOT AN ARTIFACT. The caller saves them with
+# actions/cache/save at the path `${{ runner.temp }}/slack-images` (the path is part of the
+# cache's identity, so it must be exactly that) under a key unique to its run, and passes the key.
+# Artifacts count against the org's shared Actions storage, which Pingbo's iOS release builds
+# filled on 2026-11-21 ("Artifact storage quota has been hit"); a repository's cache has its own
+# 10 GB. The cache is the caller repository's, at the caller's ref, so a pull-request branch
+# cannot plant an image for a main-branch post. A miss drops the images, never the post.
 # runs-on a40-runner for the reasons release-notify.yml gives. Callers use @main.
 name: slack-post
 
@@ -32,8 +40,8 @@ on:
         description: 'The message as JSON: {"text": "...", "blocks": [...]}'
         required: true
         type: string
-      images_artifact:
-        description: "An artifact of the calling run containing local PNG images"
+      images_cache_key:
+        description: "The actions/cache key under which the calling run saved its PNGs at runner.temp/slack-images"
         required: false
         type: string
         default: ""
@@ -70,12 +78,12 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Download Slack images
-        if: ${{ inputs.images_artifact != '' }}
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+      - name: Restore Slack images
+        if: ${{ inputs.images_cache_key != '' }}
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         continue-on-error: true
         with:
-          name: ${{ inputs.images_artifact }}
+          key: ${{ inputs.images_cache_key }}
           path: ${{ runner.temp }}/slack-images
 
       - name: Post to Slack
