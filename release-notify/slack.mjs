@@ -12,9 +12,11 @@
 //   SLACK_BOT_TOKEN=xoxb-... node slack.mjs --channel C0123 --payload-file payload.json
 //   SLACK_BOT_TOKEN=xoxb-... SLACK_PAYLOAD_JSON='{"text": "...", "blocks": [...]}' node slack.mjs --channel C0123
 // The payload holds `text` (the notification and accessibility fallback) and optionally `blocks`.
+// Image blocks may name a PNG with `local_file`; --images-dir supplies the directory to upload.
 // Without a token it posts nothing, writes the payload to the job summary, and exits 0.
 
-import { appendFileSync, readFileSync } from 'node:fs';
+import { appendFileSync, lstatSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const POST_MESSAGE_URL = 'https://slack.com/api/chat.postMessage';
@@ -38,6 +40,86 @@ export function messageBody({ channel, text, blocks }) {
 }
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const LOCAL_IMAGE_NAME = /^[a-z0-9][a-z0-9._-]{0,80}\.png$/;
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const isLocalImage = (block) => block?.type === 'image' && Object.hasOwn(block, 'local_file');
+
+/** Upload API calls use forms; response bodies and network errors may contain a signed URL. */
+async function uploadApi({ token, method, fields, send, wait }) {
+  for (let attempt = 0; ; attempt += 1) {
+    let res;
+    try {
+      res = await send(`https://slack.com/api/${method}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8' },
+        body: new URLSearchParams(fields).toString(),
+      });
+    } catch {
+      throw new SlackError(`${method}: request failed`);
+    }
+    if (res.status === 429 && attempt === 0) {
+      const seconds = Math.min(Math.max(Number(res.headers?.get?.('retry-after')) || 1, 1), 30);
+      await wait(seconds * 1000);
+      continue;
+    }
+    if (res.status < 200 || res.status >= 300) throw new SlackError(`${method}: HTTP ${res.status}`);
+    let data;
+    try { data = JSON.parse(await res.text()); } catch {
+      throw new SlackError(`${method}: the body is not JSON`);
+    }
+    if (data?.ok !== true) {
+      // Keep Slack's error code, but never echo arbitrary response text (including upload URLs).
+      const code = typeof data?.error === 'string' && /^[a-z][a-z0-9_]*$/.test(data.error) ? data.error : 'no error given';
+      throw new SlackError(`${method} refused: ${code}`);
+    }
+    return data;
+  }
+}
+
+/** Replace local images in order, leaving other blocks untouched and dropping failed images. */
+export async function resolveImages({ token, blocks, dir, fetch: send = globalThis.fetch, log = console.log, wait = sleep }) {
+  if (!blocks) return blocks;
+  const resolved = [];
+  for (const block of blocks) {
+    if (!isLocalImage(block)) { resolved.push(block); continue; }
+    const name = block.local_file;
+    let uploadUrl;
+    try {
+      if (!dir) throw new SlackError('no --images-dir');
+      if (typeof name !== 'string' || !LOCAL_IMAGE_NAME.test(name) || name.includes('..')) throw new SlackError('bad image name');
+      const file = join(dir, name);
+      const stat = lstatSync(file);
+      if (!stat.isFile()) throw new SlackError('not a regular file');
+      if (stat.size > MAX_IMAGE_BYTES) throw new SlackError('file exceeds 5 MB');
+      const bytes = readFileSync(file);
+      if (bytes.length > MAX_IMAGE_BYTES) throw new SlackError('file exceeds 5 MB');
+      const got = await uploadApi({ token, method: 'files.getUploadURLExternal', fields: { filename: name, length: String(bytes.length) }, send, wait });
+      uploadUrl = got.upload_url;
+      let url;
+      try { url = new URL(uploadUrl); } catch { throw new SlackError('invalid upload URL'); }
+      if (url.protocol !== 'https:' || url.hostname !== 'files.slack.com' || url.username || url.password || url.port) {
+        throw new SlackError('refused upload URL: expected https://files.slack.com');
+      }
+      if (typeof got.file_id !== 'string' || !got.file_id) throw new SlackError('no file_id in upload response');
+      let uploaded;
+      try {
+        uploaded = await send(uploadUrl, {
+          method: 'POST', redirect: 'manual',
+          headers: { 'Content-Type': 'application/octet-stream' }, body: bytes,
+        });
+      } catch { throw new SlackError('upload POST: request failed'); }
+      if (uploaded.status < 200 || uploaded.status >= 300) throw new SlackError(`upload POST: HTTP ${uploaded.status}`);
+      const title = String(block.title?.text ?? block.alt_text ?? '').slice(0, 250);
+      await uploadApi({ token, method: 'files.completeUploadExternal', fields: { files: JSON.stringify([{ id: got.file_id, title }]) }, send, wait });
+      const { local_file, image_url, ...image } = block;
+      resolved.push({ ...image, slack_file: { id: got.file_id } });
+    } catch (e) {
+      const reason = e instanceof SlackError ? e.message : e.code === 'ENOENT' ? 'file is missing' : 'file could not be read';
+      log(redact(redact(`image ${JSON.stringify(name)} dropped: ${reason}`, uploadUrl), token));
+    }
+  }
+  return resolved;
+}
 
 /**
  * chat.postMessage. Throws a SlackError on a network failure, a non-2xx answer, a body that is not
@@ -79,7 +161,9 @@ export async function postMessage({
     if (data.ok !== true) {
       const details = data.response_metadata?.messages?.length ? ` ${data.response_metadata.messages.join('; ')}` : '';
       const warning = data.warning ? ` (warning: ${data.warning})` : '';
-      throw new SlackError(redact(`chat.postMessage refused: ${data.error || 'no error given'}${warning}${details}`, token));
+      const error = new SlackError(redact(`chat.postMessage refused: ${data.error || 'no error given'}${warning}${details}`, token));
+      error.code = data.error;
+      throw error;
     }
     return { channel: data.channel, ts: data.ts, warning: data.warning || null };
   }
@@ -116,13 +200,13 @@ function parseArgs(argv) {
   const args = {};
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
-    if (a === '--channel' || a === '--payload-file') { args[a.slice(2)] = argv[i + 1]; i += 1; } else throw new Error(`unknown argument ${a}`);
+    if (a === '--channel' || a === '--payload-file' || a === '--images-dir') { args[a.slice(2)] = argv[i + 1]; i += 1; } else throw new Error(`unknown argument ${a}`);
   }
   return args;
 }
 
 /** The slack-post.yml entry point. Returns the exit code. */
-export async function main(argv = process.argv.slice(2), env = process.env, { fetch: send = globalThis.fetch, log = console.log } = {}) {
+export async function main(argv = process.argv.slice(2), env = process.env, { fetch: send = globalThis.fetch, log = console.log, wait = sleep } = {}) {
   const args = parseArgs(argv);
   const raw = args['payload-file'] ? readFileSync(args['payload-file'], 'utf8') : env.SLACK_PAYLOAD_JSON;
   if (!raw) throw new Error('no payload: pass --payload-file or set SLACK_PAYLOAD_JSON');
@@ -137,7 +221,24 @@ export async function main(argv = process.argv.slice(2), env = process.env, { fe
     appendSummary(`### ${NO_TOKEN_NOTICE}\n\nChannel \`${channel}\`. The payload:\n\n${fence(JSON.stringify(payload, null, 2), 'json')}`, env);
     return 0;
   }
-  const posted = await postMessage({ token, channel, text: payload.text, blocks: payload.blocks, fetch: send, log });
+  let blocks = await resolveImages({ token, blocks: payload.blocks, dir: args['images-dir'], fetch: send, log, wait });
+  // Only successful uploads replace a block; existing remote images do not enable retries.
+  const hasUploadedImages = blocks?.some((block) => block?.type === 'image' && !payload.blocks.includes(block));
+  const delays = [2000, 4000, 8000];
+  let posted;
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      posted = await postMessage({ token, channel, text: payload.text, blocks, fetch: send, log, wait });
+      break;
+    } catch (e) {
+      if (!hasUploadedImages || e.code !== 'invalid_blocks' || attempt > delays.length) throw e;
+      if (attempt < delays.length) await wait(delays[attempt]);
+      else {
+        log('::warning::chat.postMessage refused: invalid_blocks; posting without image blocks');
+        blocks = blocks.filter((block) => block?.type !== 'image');
+      }
+    }
+  }
   reportPosted(posted, env, log);
   return 0;
 }

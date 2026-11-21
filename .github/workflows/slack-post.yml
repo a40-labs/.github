@@ -7,12 +7,17 @@
 #     with:
 #       channel: C0123456789
 #       payload_json: <a JSON object: "text" (the notification fallback), optional "blocks">
+#       images_artifact: <optional artifact from the calling run containing PNG files>
 #     secrets:
 #       slack_bot_token: <secrets.A40_SLACK_BOT_TOKEN>
 #
 # Slack answers HTTP 200 for most refusals, so the job fails unless the answer says ok: true,
 # and prints Slack's `error` and `warning`, never the token. Without a token it posts nothing,
 # writes the payload to the job summary ("A40_SLACK_BOT_TOKEN not set: not posted") and passes.
+# Image blocks may use `"local_file": "costs.png"` to upload a PNG from images_artifact and
+# display it in place. Uploads need the A40 bot's files:write scope, with the same token used
+# to post. Missing files and failed uploads drop those images; images still processing after
+# retries fall back to the text sections. The payload's text remains the notification fallback.
 # runs-on a40-runner for the reasons release-notify.yml gives. Callers use @main.
 name: slack-post
 
@@ -27,6 +32,11 @@ on:
         description: 'The message as JSON: {"text": "...", "blocks": [...]}'
         required: true
         type: string
+      images_artifact:
+        description: "An artifact of the calling run containing local PNG images"
+        required: false
+        type: string
+        default: ""
     secrets:
       slack_bot_token:
         description: "The A40 app's bot token (xoxb-). Without it nothing is posted."
@@ -60,10 +70,21 @@ jobs:
         with:
           node-version: "20"
 
+      - name: Download Slack images
+        if: ${{ inputs.images_artifact != '' }}
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        continue-on-error: true
+        with:
+          name: ${{ inputs.images_artifact }}
+          path: ${{ runner.temp }}/slack-images
+
       - name: Post to Slack
         id: post
         env:
           SLACK_BOT_TOKEN: ${{ secrets.slack_bot_token }}
           SLACK_PAYLOAD_JSON: ${{ inputs.payload_json }}
           CHANNEL: ${{ inputs.channel }}
-        run: node "$GITHUB_WORKSPACE/notifier/release-notify/slack.mjs" --channel "$CHANNEL"
+        run: |
+          args=(--channel "$CHANNEL")
+          if [ -d "$RUNNER_TEMP/slack-images" ]; then args+=(--images-dir "$RUNNER_TEMP/slack-images"); fi
+          node "$GITHUB_WORKSPACE/notifier/release-notify/slack.mjs" "${args[@]}"
