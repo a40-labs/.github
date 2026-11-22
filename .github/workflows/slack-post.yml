@@ -22,10 +22,17 @@
 # THE PNGS COME THROUGH THE CALLER'S ACTIONS CACHE, NOT AN ARTIFACT. The caller saves them with
 # actions/cache/save at the path `${{ runner.temp }}/slack-images` (the path is part of the
 # cache's identity, so it must be exactly that) under a key unique to its run, and passes the key.
-# Artifacts count against the org's shared Actions storage, which Pingbo's iOS release builds
-# filled on 2026-11-21 ("Artifact storage quota has been hit"); a repository's cache has its own
-# 10 GB. The cache is the caller repository's, at the caller's ref, so a pull-request branch
-# cannot plant an image for a main-branch post. A miss drops the images, never the post.
+# Artifacts count against the org's shared monthly Actions storage allowance, which Pingbo's iOS
+# release builds spent on 2026-11-20 ("Artifact storage quota has been hit"); a repository's
+# cache has its own 10 GB. The cache is the caller repository's, at the caller's ref, so a
+# pull-request branch cannot plant an image for a main-branch post. A miss drops the images,
+# never the post.
+# A CALLER TRIGGERED BY `pull_request_target` MUST SET `cache-mode: write-only` ON THE JOB THAT
+# SAVES. Since GitHub's change of 2026-06-26 such a run has a read-only cache by default: the
+# save only warns ("cache write denied: token has no writable scopes"), the restore here misses,
+# and the post goes out without its images (deploy's digest of 2026-11-22). A manual dispatch has
+# a writable cache, so a dry run does not show it. This workflow sets no cache-mode: read access
+# is enough to restore, and a called workflow may not ask for more than its caller allows.
 # runs-on a40-runner for the reasons release-notify.yml gives. Callers use @main.
 name: slack-post
 
